@@ -10,21 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.atomic.AtomicReference;
-
-/**
- * Adaptive notification router.
- *
- * Routing logic:
- *   - DIRECT: pushes SSE directly from the publish thread (low subscriber count)
- *   - BROKER: publishes to RabbitMQ fanout; consumer handles SSE delivery (high subscriber count)
- *
- * Switches UP to BROKER  when active connections >= threshold
- * Switches DOWN to DIRECT when active connections <  (threshold - hysteresis)
- *
- * Hysteresis prevents rapid toggling near the threshold.
- * If broker dispatch fails, falls back to DIRECT automatically.
- */
 @Slf4j
 @Service
 public class HybridNotificationRouterImpl implements NotificationRouterService {
@@ -42,7 +27,8 @@ public class HybridNotificationRouterImpl implements NotificationRouterService {
     private final BrokerDispatcherImpl brokerDispatcher;
     private final SubscriberService subscriberService;
 
-    private final AtomicReference<NotificationDispatcher> dispatcher;
+    // volatile ensures every thread always sees the latest dispatcher without locking
+    private volatile NotificationDispatcher dispatcher;
 
     public HybridNotificationRouterImpl(DirectDispatcherImpl directDispatcher,
                                         BrokerDispatcherImpl brokerDispatcher,
@@ -50,14 +36,14 @@ public class HybridNotificationRouterImpl implements NotificationRouterService {
         this.directDispatcher = directDispatcher;
         this.brokerDispatcher = brokerDispatcher;
         this.subscriberService = subscriberService;
-        this.dispatcher = new AtomicReference<>(directDispatcher);
+        this.dispatcher = directDispatcher;
     }
 
     @Override
     public int broadcast(NotificationRequest request) {
         adapt();
 
-        NotificationDispatcher current = dispatcher.get();
+        NotificationDispatcher current = dispatcher;
         log.info("Broadcasting via [{}] | active: {} | threshold: {}/{}",
                 current.mode(), subscriberService.activeEmitterCount(), threshold, threshold - hysteresis);
 
@@ -71,7 +57,7 @@ public class HybridNotificationRouterImpl implements NotificationRouterService {
     @Override
     public RouterStatus getStatus() {
         return new RouterStatus(
-                dispatcher.get().mode(),
+                dispatcher.mode(),
                 subscriberService.activeEmitterCount(),
                 subscriberService.getAllSubscribers().size(),
                 threshold,
@@ -81,22 +67,21 @@ public class HybridNotificationRouterImpl implements NotificationRouterService {
 
     private void adapt() {
         int active = subscriberService.activeEmitterCount();
-        NotificationDispatcher current = dispatcher.get();
         int switchDownAt = threshold - hysteresis;
 
-        if (current == directDispatcher && active >= threshold) {
+        if (dispatcher == directDispatcher && active >= threshold) {
             switchTo(brokerDispatcher, active,
                     String.format("connections (%d) >= threshold (%d)", active, threshold));
-        } else if (current == brokerDispatcher && active < switchDownAt) {
+        } else if (dispatcher == brokerDispatcher && active < switchDownAt) {
             switchTo(directDispatcher, active,
                     String.format("connections (%d) < switch-down band (%d)", active, switchDownAt));
         }
     }
 
     private void switchTo(NotificationDispatcher next, int count, String reason) {
-        String from = dispatcher.get().mode();
+        String from = dispatcher.mode();
         applyTransitionBuffer();
-        dispatcher.set(next);
+        dispatcher = next;
         log.warn("Dispatcher switched: {} → {} | connections={} | reason={}", from, next.mode(), count, reason);
     }
 

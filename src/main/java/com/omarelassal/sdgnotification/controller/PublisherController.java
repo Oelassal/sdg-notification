@@ -28,7 +28,7 @@ public class PublisherController {
     @PostMapping("/notify")
     @Operation(
             summary = "Send a notification",
-            description = "Broadcasts to all active SSE streams. Route is chosen adaptively (DIRECT or BROKER)."
+            description = "Broadcasts to all active SSE streams."
     )
     public ApiResponse<Map<String, Object>> sendNotification(@Valid @RequestBody NotificationRequest request) {
         log.info("Publisher sending notification — title='{}'", request.getTitle());

@@ -4,10 +4,6 @@ import com.omarelassal.sdgnotification.dto.NotificationRequest;
 
 public interface NotificationRouterService {
 
-    /**
-     * Broadcasts a notification. Returns number of subscribers reached,
-     * or -1 if delivery is async (broker mode).
-     */
     int broadcast(NotificationRequest request);
 
     RouterStatus getStatus();
