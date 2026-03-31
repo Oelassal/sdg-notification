@@ -1,0 +1,740 @@
+{
+  "info": {
+    "name": "Notification System - Full Test Flow",
+    "description": "Complete test flow for the Hybrid SSE + RabbitMQ Notification System.\n\nORDER TO RUN:\n1. Register Subscriber 1\n2. Register Subscriber 2\n3. Open SSE Stream - Subscriber 1 (keep open)\n4. Open SSE Stream - Subscriber 2 (keep open)\n5. Send Notification\n6. Get Router Status\n7. Get All Subscribers\n8. Unsubscribe Subscriber 1\n9. Send Notification After Unsubscribe\n10. Validation error tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "subscriber1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subscriber2Id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Subscribers",
+      "item": [
+        {
+          "name": "1. Register Subscriber 1 (Omar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Subscriber ID is present', function () {",
+                  "    pm.expect(jsonData.data.id).to.be.a('string');",
+                  "    pm.expect(jsonData.data.id).to.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Subscriber name is Omar', function () {",
+                  "    pm.expect(jsonData.data.name).to.eql('Omar');",
+                  "});",
+                  "",
+                  "pm.test('Subscriber is not active yet', function () {",
+                  "    pm.expect(jsonData.data.active).to.eql(false);",
+                  "});",
+                  "",
+                  "// Save subscriber 1 ID to collection variable",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('subscriber1Id', jsonData.data.id);",
+                  "    console.log('Subscriber 1 ID saved:', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Omar\",\n  \"email\": \"omar@test.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "register"]
+            },
+            "description": "Register Omar as a subscriber. The response ID is automatically saved to the 'subscriber1Id' collection variable."
+          }
+        },
+        {
+          "name": "2. Register Subscriber 2 (Alice)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Subscriber ID is present', function () {",
+                  "    pm.expect(jsonData.data.id).to.be.a('string');",
+                  "    pm.expect(jsonData.data.id).to.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Subscriber name is Alice', function () {",
+                  "    pm.expect(jsonData.data.name).to.eql('Alice');",
+                  "});",
+                  "",
+                  "pm.test('Subscriber is not active yet', function () {",
+                  "    pm.expect(jsonData.data.active).to.eql(false);",
+                  "});",
+                  "",
+                  "// Save subscriber 2 ID to collection variable",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('subscriber2Id', jsonData.data.id);",
+                  "    console.log('Subscriber 2 ID saved:', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice\",\n  \"email\": \"alice@test.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "register"]
+            },
+            "description": "Register Alice as a subscriber. The response ID is automatically saved to the 'subscriber2Id' collection variable."
+          }
+        },
+        {
+          "name": "3. Open SSE Stream - Subscriber 1 (Omar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Content-Type is text/event-stream', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              },
+              {
+                "key": "Cache-Control",
+                "value": "no-cache"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/{{subscriber1Id}}/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "{{subscriber1Id}}", "stream"]
+            },
+            "description": "Opens Omar's SSE stream. KEEP THIS REQUEST OPEN — do not cancel it. Notifications will appear in the response body as they are sent by the publisher.\n\nIn Postman v10+, check the 'Messages' tab in the response panel to see live events."
+          }
+        },
+        {
+          "name": "4. Open SSE Stream - Subscriber 2 (Alice)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Content-Type is text/event-stream', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              },
+              {
+                "key": "Cache-Control",
+                "value": "no-cache"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/{{subscriber2Id}}/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "{{subscriber2Id}}", "stream"]
+            },
+            "description": "Opens Alice's SSE stream. KEEP THIS REQUEST OPEN — do not cancel it. Open this in a separate Postman tab alongside Omar's stream."
+          }
+        },
+        {
+          "name": "7. Unsubscribe Subscriber 1 (Omar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Unsubscribed message returned', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('Unsubscribed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/{{subscriber1Id}}/unsubscribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "{{subscriber1Id}}", "unsubscribe"]
+            },
+            "description": "Unsubscribes Omar. After this, send another notification — only Alice's stream should receive it."
+          }
+        }
+      ],
+      "description": "Subscriber registration, streaming, and unsubscribe endpoints."
+    },
+    {
+      "name": "Publisher",
+      "item": [
+        {
+          "name": "5. Send Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Mode is present in response', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.mode).to.be.a('string');",
+                  "    pm.expect(['DIRECT', 'BROKER']).to.include(jsonData.data.mode);",
+                  "});",
+                  "",
+                  "pm.test('deliveredTo is present', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.deliveredTo).to.not.be.undefined;",
+                  "});",
+                  "",
+                  "console.log('Dispatch mode:', pm.response.json().data.mode);",
+                  "console.log('Delivered to:', pm.response.json().data.deliveredTo);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"System Alert\",\n  \"message\": \"Deployment in 10 minutes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "notify"]
+            },
+            "description": "Broadcasts a notification to all active SSE streams. After sending, check tabs 3 and 4 (SSE streams) — both should display the notification event immediately."
+          }
+        },
+        {
+          "name": "6. Get Router Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('currentMode is DIRECT or BROKER', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(['DIRECT', 'BROKER']).to.include(jsonData.data.currentMode);",
+                  "});",
+                  "",
+                  "pm.test('switchUpThreshold is present', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.switchUpThreshold).to.be.a('number');",
+                  "});",
+                  "",
+                  "pm.test('switchDownThreshold is less than switchUpThreshold', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.switchDownThreshold).to.be.lessThan(jsonData.data.switchUpThreshold);",
+                  "});",
+                  "",
+                  "console.log('Current mode:', pm.response.json().data.currentMode);",
+                  "console.log('Active connections:', pm.response.json().data.activeConnections);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/router/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "router", "status"]
+            },
+            "description": "Returns the current dispatch mode (DIRECT or BROKER), active connection count, and switching thresholds."
+          }
+        },
+        {
+          "name": "8. Get All Subscribers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Data is an array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "console.log('Total subscribers:', pm.response.json().data.length);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/subscribers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "subscribers"]
+            },
+            "description": "Returns all registered subscribers with their active stream status."
+          }
+        },
+        {
+          "name": "9. Send Notification After Unsubscribe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response success is true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "console.log('After unsubscribe — delivered to:', pm.response.json().data.deliveredTo);",
+                  "console.log('Expected: only 1 subscriber (Alice) should receive this');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Follow-up Alert\",\n  \"message\": \"This should only reach Alice — Omar has unsubscribed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "notify"]
+            },
+            "description": "Send notification after Omar unsubscribed. Only Alice's SSE stream (tab 4) should receive this — Omar's tab should stay silent."
+          }
+        }
+      ],
+      "description": "Publisher endpoints — send notifications and inspect system state."
+    },
+    {
+      "name": "Validation Errors",
+      "item": [
+        {
+          "name": "Register - Invalid Email Format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('Error message is present', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.be.a('string');",
+                  "    pm.expect(jsonData.message).to.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Omar\",\n  \"email\": \"not-a-valid-email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "register"]
+            },
+            "description": "Should return 400 with validation error message about invalid email."
+          }
+        },
+        {
+          "name": "Register - Missing Name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"omar@test.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "register"]
+            },
+            "description": "Should return 400 — name field is required."
+          }
+        },
+        {
+          "name": "Notify - Missing Title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"No title provided here\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "notify"]
+            },
+            "description": "Should return 400 — title field is required."
+          }
+        },
+        {
+          "name": "Notify - Missing Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"No message provided\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/publisher/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publisher", "notify"]
+            },
+            "description": "Should return 400 — message field is required."
+          }
+        },
+        {
+          "name": "Unsubscribe - Unknown ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions subscriber not found', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/fake-id-that-does-not-exist/unsubscribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "fake-id-that-does-not-exist", "unsubscribe"]
+            },
+            "description": "Should return 404 with subscriber not found error."
+          }
+        },
+        {
+          "name": "Stream - Unknown Subscriber ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Response success is false', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscribers/fake-id-that-does-not-exist/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscribers", "fake-id-that-does-not-exist", "stream"]
+            },
+            "description": "Should return 404 — cannot open a stream for an unregistered subscriber."
+          }
+        }
+      ],
+      "description": "Tests for all validation and error handling scenarios. All should return success: false."
+    }
+  ]
+}
