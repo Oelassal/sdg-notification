@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Component
@@ -31,21 +30,21 @@ public class DirectDispatcherImpl implements NotificationDispatcher {
         }
 
         Map<String, Object> payload = buildPayload(request);
-        AtomicInteger delivered = new AtomicInteger(0);
+        int delivered = 0;
 
-        emitters.forEach((id, emitter) -> {
+        for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {
             try {
-                emitter.send(SseEmitter.event().name("notification").data(payload));
-                delivered.incrementAndGet();
-                log.debug("[DIRECT] Delivered to subscriberId={}", id);
+                entry.getValue().send(SseEmitter.event().name("notification").data(payload));
+                delivered++;
+                log.debug("[DIRECT] Delivered to subscriberId={}", entry.getKey());
             } catch (IOException e) {
-                log.warn("[DIRECT] Delivery failed for subscriberId={} — {}", id, e.getMessage());
-                emitter.completeWithError(e);
+                log.warn("[DIRECT] Delivery failed for subscriberId={} — {}", entry.getKey(), e.getMessage());
+                entry.getValue().completeWithError(e);
             }
-        });
+        }
 
-        log.info("[DIRECT] Broadcast complete — delivered: {}/{}", delivered.get(), emitters.size());
-        return delivered.get();
+        log.info("[DIRECT] Broadcast complete — delivered: {}/{}", delivered, emitters.size());
+        return delivered;
     }
 
     @Override

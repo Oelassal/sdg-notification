@@ -36,10 +36,6 @@ public class BrokerDispatcherImpl implements NotificationDispatcher {
     }
 
     private Map<String, Object> buildPayload(NotificationRequest request) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("title", request.getTitle());
-        payload.put("message", request.getMessage());
-        payload.put("sentAt", Instant.now().toString());
-        return payload;
+        return DirectDispatcherImpl.buildPayload(request);
     }
 }

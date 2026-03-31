@@ -9,15 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Consumes notification messages from this node's anonymous queue.
- *
- * In BROKER mode, BrokerDispatcherImpl publishes to the fanout exchange.
- * RabbitMQ delivers a copy to every bound queue (one per server node).
- * This consumer pushes the message to all local SSE streams on this node.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -34,19 +26,19 @@ public class NotificationConsumer {
             return;
         }
 
-        AtomicInteger delivered = new AtomicInteger(0);
+        int delivered = 0;
 
-        emitters.forEach((id, emitter) -> {
+        for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {
             try {
-                emitter.send(SseEmitter.event().name("notification").data(payload));
-                delivered.incrementAndGet();
-                log.debug("[CONSUMER] Delivered to subscriberId={}", id);
+                entry.getValue().send(SseEmitter.event().name("notification").data(payload));
+                delivered++;
+                log.debug("[CONSUMER] Delivered to subscriberId={}", entry.getKey());
             } catch (IOException e) {
-                log.warn("[CONSUMER] Delivery failed for subscriberId={} — {}", id, e.getMessage());
-                emitter.completeWithError(e);
+                log.warn("[CONSUMER] Delivery failed for subscriberId={} — {}", entry.getKey(), e.getMessage());
+                entry.getValue().completeWithError(e);
             }
-        });
+        }
 
-        log.info("[CONSUMER] Broker message delivered — reached {}/{} streams", delivered.get(), emitters.size());
+        log.info("[CONSUMER] Broker message delivered — reached {}/{} streams", delivered, emitters.size());
     }
 }
